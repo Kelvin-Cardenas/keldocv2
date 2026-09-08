@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KelDoc — Análisis de Salud Corporal</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#050810;--ink2:#0b0f1a;--ink3:#111828;--ink4:#1a2235;
+  --line:#2a3550;--line2:#354060;
+  --cyan:#00d4ff;--cyan2:#00a8cc;
+  --amber:#ffa726;--rose:#ff4d6d;--sage:#00e5a0;
+  --text:#e8edf8;--text2:#9aa5be;--text3:#5a6680;
+  --r-ok:#00e5a0;--r-low:#7ecfff;--r-mid:#ffa726;--r-high:#ff4d6d;--r-crit:#ff1744;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--ink);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(0,212,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.022) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
+.bg-radial{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 60% 50% at 80% 10%,rgba(0,212,255,.06) 0%,transparent 70%),radial-gradient(ellipse 40% 40% at 10% 90%,rgba(255,167,38,.04) 0%,transparent 70%);}
+.page{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 16px 80px;}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 0;border-bottom:1px solid var(--line);margin-bottom:32px;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--cyan),var(--cyan2));display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.logo-name{font-weight:900;font-size:1.25rem;letter-spacing:-.5px;}
+.logo-name span{color:var(--cyan);}
+.header-pill{font-size:.7rem;font-weight:600;color:var(--text3);border:1px solid var(--line2);border-radius:99px;padding:5px 13px;white-space:nowrap;}
+
+/* HERO */
+.hero{text-align:center;padding:8px 0 40px;}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.18);border-radius:99px;padding:6px 16px;font-size:.73rem;font-weight:600;color:var(--cyan);margin-bottom:20px;}
+.hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.hero h1{font-size:clamp(2rem,5vw,3.8rem);font-weight:900;line-height:1.04;letter-spacing:-1.5px;margin-bottom:12px;}
+.hero h1 em{font-style:normal;color:var(--cyan);}
+.hero p{color:var(--text2);max-width:500px;margin:0 auto;font-size:.93rem;font-weight:300;line-height:1.7;}
+
+/* PROGRESS */
+.prog{display:flex;align-items:center;max-width:560px;margin:0 auto 32px;}
+.ps{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
+.ps:not(:last-child)::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:1px;background:var(--line2);z-index:0;transition:background .4s;}
+.ps.done::after{background:var(--cyan);}
+.pn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line2);background:var(--ink3);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--text3);position:relative;z-index:1;transition:all .3s;flex-shrink:0;}
+.ps.active .pn{border-color:var(--cyan);background:var(--cyan);color:var(--ink);}
+.ps.done .pn{border-color:var(--cyan);color:var(--cyan);}
+.pl{font-size:.6rem;color:var(--text3);margin-top:5px;font-weight:500;text-align:center;}
+.ps.active .pl{color:var(--cyan);}
+
+/* PANEL */
+.panel{display:none;}
+.panel.active{display:block;animation:fadeUp .35s cubic-bezier(.22,1,.36,1);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+
+/* CARD */
+.card{background:rgba(17,24,40,.75);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:14px;backdrop-filter:blur(12px);}
+.card-lbl{font-size:.72rem;font-weight:700;color:var(--text3);letter-spacing:1px;margin-bottom:20px;}
+
+/* VALIDATION */
+.val-err{display:none;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.35);border-radius:10px;padding:10px 14px;font-size:.8rem;color:#ff8fa3;margin-top:12px;font-weight:500;align-items:center;gap:8px;}
+.val-err.show{display:flex;}
+
+/* FIELD */
+.field{margin-bottom:16px;}
+.field>label{display:block;font-size:.82rem;font-weight:600;color:var(--text2);margin-bottom:8px;}
+.field-req{color:var(--rose);}
+select{width:100%;background:var(--ink3);border:1px solid var(--line2);border-radius:11px;padding:12px 14px;color:var(--text);font-family:'Outfit',sans-serif;font-size:.92rem;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none;}
+select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,212,255,.1);}
+select.invalid{border-color:var(--rose)!important;box-shadow:0 0 0 3px rgba(255,77,109,.12)!important;}
+select option{background:#111828;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:480px){.row2{grid-template-columns:1fr;}}
+
+/* VISUAL PICKER */
+.vp{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px;}
+.vo{cursor:pointer;border:1.5px solid var(--line2);border-radius:13px;padding:12px 6px 10px;text-align:center;background:var(--ink3);transition:all .18s;-webkit-tap-highlight-color:transparent;user-select:none;}
+.vo:hover{border-color:rgba(0,212,255,.35);}
+.vo.sel{border-color:var(--cyan);background:rgba(0,212,255,.09);}
+.vo .vi{font-size:1.7rem;display:block;margin-bottom:4px;line-height:1;}
+.vo .vl{font-size:.66rem;font-weight:500;color:var(--text3);line-height:1.3;}
+.vo.sel .vl{color:var(--cyan);}
+/* highlight required pickers on error */
+.vp.needs-sel .vo{border-color:rgba(255,77,109,.4);}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{cursor:pointer;border:1px solid var(--line2);border-radius:99px;padding:7px 13px;font-size:.75rem;font-weight:500;background:var(--ink3);color:var(--text3);transition:all .18s;-webkit-tap-highlight-color:transparent;user-select:none;}
+.chip.sel{border-color:var(--cyan);background:rgba(0,212,255,.1);color:var(--cyan);}
+.chip.warn.sel{border-color:var(--amber);background:rgba(255,167,38,.1);color:var(--amber);}
+.chip.bad.sel{border-color:var(--rose);background:rgba(255,77,109,.1);color:var(--rose);}
+/* highlight required chips on error */
+.chips.needs-sel{outline:1px solid rgba(255,77,109,.4);outline-offset:4px;border-radius:8px;}
+
+/* BUTTONS */
+.btn-row{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;}
+.btn{padding:13px 26px;border:none;border-radius:11px;font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
+.btn-ghost{background:transparent;border:1px solid var(--line2);color:var(--text3);}
+.btn-ghost:hover{border-color:var(--line);color:var(--text2);}
+.btn-primary{background:linear-gradient(135deg,var(--cyan),var(--cyan2));color:var(--ink);flex:1;}
+.btn-primary:active{transform:scale(.97);}
+.btn-full{width:100%;padding:17px;font-size:.97rem;}
+
+/* RESULTS */
+.results-wrap{display:grid;grid-template-columns:290px 1fr;gap:18px;align-items:start;}
+@media(max-width:780px){.results-wrap{grid-template-columns:1fr;}}
+
+/* SCORE */
+.score-card{background:rgba(17,24,40,.8);border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;align-items:center;gap:18px;margin-bottom:16px;}
+.ring-wrap{position:relative;width:86px;height:86px;flex-shrink:0;}
+.ring-wrap svg{width:86px;height:86px;}
+.ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ring-val{font-size:1.55rem;font-weight:900;line-height:1;}
+.ring-sub{font-size:.52rem;font-weight:600;color:var(--text3);margin-top:1px;}
+.score-text h2{font-size:1.2rem;font-weight:800;letter-spacing:-.4px;margin-bottom:5px;}
+.score-text p{font-size:.8rem;color:var(--text2);line-height:1.6;font-weight:300;}
+
+/* MAP CARD */
+.map-card{background:rgba(11,15,26,.95);border:1px solid var(--line);border-radius:22px;padding:20px 16px;position:sticky;top:16px;}
+.map-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.map-title{font-size:.7rem;font-weight:700;color:var(--text3);letter-spacing:1px;}
+.map-pill{font-size:.66rem;font-weight:600;padding:3px 10px;border-radius:99px;background:rgba(0,212,255,.1);color:var(--cyan);border:1px solid rgba(0,212,255,.2);}
+.svg-outer{display:flex;justify-content:center;position:relative;}
+.scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:scanMove 3s linear infinite;opacity:0;pointer-events:none;}
+.svg-outer:hover .scan,.svg-outer.active .scan{opacity:.5;}
+@keyframes scanMove{0%{top:0;opacity:0;}5%{opacity:.5;}95%{opacity:.5;}100%{top:100%;opacity:0;}}
+#bsvg{width:100%;max-width:210px;filter:drop-shadow(0 0 24px rgba(0,212,255,.07));}
+.map-leg{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
+.ml{display:flex;align-items:center;gap:4px;font-size:.6rem;color:var(--text3);}
+.mld{width:7px;height:7px;border-radius:50%;}
+
+/* ORGAN CARDS */
+.sec-lbl{font-size:.72rem;font-weight:700;color:var(--text3);letter-spacing:1px;margin-bottom:10px;}
+.organ-list{display:flex;flex-direction:column;gap:10px;}
+.ocard{background:rgba(17,24,40,.8);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:grid;grid-template-columns:66px 1fr;opacity:0;transform:translateY(10px);transition:opacity .4s ease,transform .4s ease;}
+.ocard.in{opacity:1;transform:translateY(0);}
+.othumb{display:flex;align-items:center;justify-content:center;font-size:1.85rem;background:var(--ink3);border-right:1px solid var(--line);}
+.obody{padding:12px 14px;}
+.ohead{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:6px;}
+.oname{font-size:.87rem;font-weight:700;}
+.rbadge{font-size:.6rem;font-weight:700;letter-spacing:.6px;padding:3px 8px;border-radius:5px;white-space:nowrap;}
+.rb-low{background:rgba(126,207,255,.1);color:var(--r-low);}
+.rb-mid{background:rgba(255,167,38,.12);color:var(--r-mid);}
+.rb-high{background:rgba(255,77,109,.12);color:var(--r-high);}
+.rb-crit{background:rgba(255,23,68,.15);color:var(--r-crit);}
+.odesc{font-size:.76rem;color:var(--text2);line-height:1.5;font-weight:300;margin-bottom:6px;}
+.dtags{display:flex;flex-wrap:wrap;gap:4px;}
+.dtag{font-size:.62rem;background:var(--ink4);border:1px solid var(--line);border-radius:5px;padding:2px 7px;color:var(--text3);}
+.tip-box{background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.12);border-radius:14px;padding:15px 17px;margin-top:13px;font-size:.8rem;line-height:1.7;color:var(--text2);font-weight:300;}
+.tip-box strong{font-weight:700;color:var(--cyan);display:block;margin-bottom:6px;font-size:.82rem;}
+
+/* LOADING */
+.loading-ui{text-align:center;padding:60px 20px;display:flex;flex-direction:column;align-items:center;gap:16px;}
+.spinner{width:50px;height:50px;border-radius:50%;border:3px solid var(--line2);border-top-color:var(--cyan);border-right-color:rgba(0,212,255,.3);animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-ui h3{font-size:1rem;font-weight:600;}
+.loading-ui p{color:var(--text3);font-size:.8rem;font-weight:300;max-width:280px;line-height:1.6;}
+.ldots span{animation:ldot 1.4s ease-in-out infinite;}
+.ldots span:nth-child(2){animation-delay:.2s;}
+.ldots span:nth-child(3){animation-delay:.4s;}
+@keyframes ldot{0%,80%,100%{opacity:.2;}40%{opacity:1;}}
+
+.err-box{background:rgba(255,77,109,.05);border:1px solid rgba(255,77,109,.2);border-radius:18px;padding:28px;text-align:center;}
+.err-box h3{color:var(--rose);font-size:1rem;margin-bottom:8px;}
+.err-box p{font-size:.82rem;color:var(--text2);font-weight:300;line-height:1.6;max-width:340px;margin:0 auto;}
+.err-box .btn{margin-top:16px;}
+
+.disclaimer{font-size:.68rem;color:var(--text3);text-align:center;margin-top:20px;font-weight:300;line-height:1.6;max-width:460px;margin-left:auto;margin-right:auto;}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-radial"></div>
+<div class="page">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🩺</div>
+    <div class="logo-name">Kel<span>Doc</span></div>
+  </div>
+  <div class="header-pill">Análisis Preventivo con IA</div>
+</header>
+
+<div class="hero">
+  <div class="hero-badge">Responde · La IA analiza · Descubre tus riesgos</div>
+  <h1>Tu salud,<br><em>mapeada en segundos.</em></h1>
+  <p>Sin equipos ni laboratorio. Responde preguntas simples sobre tus hábitos y descubre qué órganos necesitan atención.</p>
+</div>
+
+<div class="prog" id="prog">
+  <div class="ps active" id="ps0"><div class="pn">1</div><div class="pl">Tu figura</div></div>
+  <div class="ps" id="ps1"><div class="pn">2</div><div class="pl">Alimentación</div></div>
+  <div class="ps" id="ps2"><div class="pn">3</div><div class="pl">Bebidas</div></div>
+  <div class="ps" id="ps3"><div class="pn">4</div><div class="pl">Síntomas</div></div>
+  <div class="ps" id="ps4"><div class="pn">★</div><div class="pl">Diagnóstico</div></div>
+</div>
+
+<!-- PANEL 0 -->
+<div class="panel active" id="p0">
+  <div class="card">
+    <div class="card-lbl">PASO 1 — TU FIGURA</div>
+    <div class="field">
+      <label>Sexo biológico <span class="field-req">*</span></label>
+      <div class="vp" id="vp-sex">
+        <div class="vo sel" data-v="male"><span class="vi">👨</span><span class="vl">Masculino</span></div>
+        <div class="vo" data-v="female"><span class="vi">👩</span><span class="vl">Femenino</span></div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Rango de edad <span class="field-req">*</span></label>
+        <select id="s-age"><option value="">Selecciona...</option><option value="15-24">15–24 años</option><option value="25-34">25–34 años</option><option value="35-44">35–44 años</option><option value="45-54">45–54 años</option><option value="55-64">55–64 años</option><option value="65+">65+ años</option></select>
+      </div>
+      <div class="field">
+        <label>Talla de ropa <span class="field-req">*</span></label>
+        <select id="s-clothing"><option value="">Selecciona...</option><option value="xs">XS — muy delgado/a</option><option value="s">S — delgado/a</option><option value="m">M — peso normal</option><option value="l">L — sobrepeso leve</option><option value="xl">XL — sobrepeso notable</option><option value="xxl">XXL+ — obesidad</option></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Dónde notas más grasa? <span class="field-req">*</span> <small style="font-weight:300;color:var(--text3)">(elige al menos una)</small></label>
+      <div class="vp" id="vp-zones">
+        <div class="vo" data-v="belly"><span class="vi">🫃</span><span class="vl">Barriga</span></div>
+        <div class="vo" data-v="flanks"><span class="vi">↔️</span><span class="vl">Costados</span></div>
+        <div class="vo" data-v="chest"><span class="vi">🫁</span><span class="vl">Pecho</span></div>
+        <div class="vo" data-v="arms"><span class="vi">💪</span><span class="vl">Brazos</span></div>
+        <div class="vo" data-v="hips"><span class="vi">🍑</span><span class="vl">Cadera</span></div>
+        <div class="vo" data-v="thighs"><span class="vi">🦵</span><span class="vl">Muslos</span></div>
+        <div class="vo" data-v="face"><span class="vi">😶</span><span class="vl">Cara/papada</span></div>
+        <div class="vo" data-v="none"><span class="vi">✅</span><span class="vl">Ninguna</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Actividad física semanal <span class="field-req">*</span></label>
+      <div class="vp" id="vp-ex">
+        <div class="vo sel" data-v="none"><span class="vi">🛋️</span><span class="vl">Sedentario</span></div>
+        <div class="vo" data-v="light"><span class="vi">🚶</span><span class="vl">Caminatas 1-2×</span></div>
+        <div class="vo" data-v="moderate"><span class="vi">🏃</span><span class="vl">Ejercicio 3-4×</span></div>
+        <div class="vo" data-v="active"><span class="vi">🏋️</span><span class="vl">Muy activo 5×+</span></div>
+      </div>
+    </div>
+    <div class="val-err" id="v0">⚠ <span id="v0t"></span></div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="next0()">Continuar →</button></div>
+  </div>
+</div>
+
+<!-- PANEL 1 -->
+<div class="panel" id="p1">
+  <div class="card">
+    <div class="card-lbl">PASO 2 — ALIMENTACIÓN</div>
+    <div class="field">
+      <label>¿Qué alimentos consumes frecuentemente? <span class="field-req">*</span> <small style="font-weight:300;color:var(--text3)">(elige al menos uno)</small></label>
+      <div class="chips" id="ch-food">
+        <div class="chip bad" data-v="fastfood">🍔 Comida rápida</div>
+        <div class="chip bad" data-v="fried">🍟 Frituras</div>
+        <div class="chip bad" data-v="sweets">🍰 Dulces / pasteles</div>
+        <div class="chip warn" data-v="bread">🍞 Pan blanco / harinas</div>
+        <div class="chip warn" data-v="rice">🍚 Arroz / pasta en exceso</div>
+        <div class="chip warn" data-v="redmeat">🥩 Carne roja a diario</div>
+        <div class="chip warn" data-v="salt">🧂 Mucha sal / embutidos</div>
+        <div class="chip warn" data-v="dairy">🧀 Lácteos en exceso</div>
+        <div class="chip" data-v="chicken">🍗 Pollo / pavo</div>
+        <div class="chip" data-v="fish">🐟 Pescado</div>
+        <div class="chip" data-v="veggies">🥦 Verduras frecuentes</div>
+        <div class="chip" data-v="fruits">🍎 Frutas frescas</div>
+        <div class="chip" data-v="legumes">🫘 Legumbres</div>
+        <div class="chip" data-v="eggs">🥚 Huevos</div>
+        <div class="chip" data-v="nuts">🥜 Frutos secos</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Con qué frecuencia comes ultraprocesados? <span class="field-req">*</span></label>
+      <div class="vp" id="vp-proc">
+        <div class="vo" data-v="never"><span class="vi">🚫</span><span class="vl">Casi nunca</span></div>
+        <div class="vo" data-v="sometimes"><span class="vi">🤷</span><span class="vl">A veces</span></div>
+        <div class="vo" data-v="often"><span class="vi">⚠️</span><span class="vl">Seguido</span></div>
+        <div class="vo sel" data-v="daily"><span class="vi">🔥</span><span class="vl">Casi a diario</span></div>
+      </div>
+    </div>
+    <div class="val-err" id="v1">⚠ <span id="v1t"></span></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="go(0)">← Atrás</button>
+      <button class="btn btn-primary" onclick="next1()">Continuar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL 2 -->
+<div class="panel" id="p2">
+  <div class="card">
+    <div class="card-lbl">PASO 3 — BEBIDAS Y HÁBITOS</div>
+    <div class="field">
+      <label>¿Qué bebidas consumes habitualmente? <span class="field-req">*</span> <small style="font-weight:300;color:var(--text3)">(elige al menos una)</small></label>
+      <div class="chips" id="ch-drink">
+        <div class="chip bad" data-v="alcohol_daily">🍺 Alcohol a diario</div>
+        <div class="chip warn" data-v="alcohol_weekly">🍷 Alcohol varios días/sem</div>
+        <div class="chip" data-v="alcohol_social">🥂 Alcohol ocasional</div>
+        <div class="chip bad" data-v="energy">⚡ Energizantes</div>
+        <div class="chip bad" data-v="soda_daily">🥤 Gaseosa a diario</div>
+        <div class="chip warn" data-v="soda_sometimes">🫧 Gaseosa a veces</div>
+        <div class="chip warn" data-v="coffee_excess">☕ Más de 4 cafés/día</div>
+        <div class="chip" data-v="coffee_mod">☕ 1–2 cafés/día</div>
+        <div class="chip bad" data-v="water_low">🏜️ Poca agua (menos 1L)</div>
+        <div class="chip" data-v="water_ok">💧 Agua suficiente (1.5L+)</div>
+        <div class="chip" data-v="tea">🍵 Té natural</div>
+        <div class="chip bad" data-v="juice_box">🧃 Jugos de caja</div>
+        <div class="chip" data-v="juice_natural">🍊 Jugos naturales</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Tabaco <span class="field-req">*</span></label>
+      <div class="vp" id="vp-smoke">
+        <div class="vo sel" data-v="never"><span class="vi">✅</span><span class="vl">Nunca</span></div>
+        <div class="vo" data-v="past"><span class="vi">🕰️</span><span class="vl">Antes, ya dejé</span></div>
+        <div class="vo" data-v="occasional"><span class="vi">🚬</span><span class="vl">Ocasionalmente</span></div>
+        <div class="vo" data-v="daily"><span class="vi">💨</span><span class="vl">A diario</span></div>
+      </div>
+    </div>
+    <div class="val-err" id="v2">⚠ <span id="v2t"></span></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="go(1)">← Atrás</button>
+      <button class="btn btn-primary" onclick="next2()">Continuar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL 3 -->
+<div class="panel" id="p3">
+  <div class="card">
+    <div class="card-lbl">PASO 4 — SÍNTOMAS FRECUENTES</div>
+    <div class="field">
+      <label>¿Qué sientes con frecuencia? <span class="field-req">*</span> <small style="font-weight:300;color:var(--text3)">(elige al menos uno)</small></label>
+      <div class="chips" id="ch-sym">
+        <div class="chip" data-v="fatigue">😴 Cansancio excesivo</div>
+        <div class="chip" data-v="heartburn">🔥 Acidez / reflujo</div>
+        <div class="chip" data-v="bloating">🎈 Hinchazón abdominal</div>
+        <div class="chip" data-v="headache">🤕 Dolores de cabeza</div>
+        <div class="chip" data-v="thirst">🥤 Sed constante</div>
+        <div class="chip" data-v="urination">🚽 Orinar mucho</div>
+        <div class="chip" data-v="joint_pain">🦴 Dolor articular</div>
+        <div class="chip" data-v="shortbreath">💨 Me canso fácil</div>
+        <div class="chip" data-v="chest_pain">💔 Presión en el pecho</div>
+        <div class="chip" data-v="vision">👁️ Vista borrosa</div>
+        <div class="chip" data-v="skin">🟡 Piel amarilla / seca</div>
+        <div class="chip" data-v="constipation">⚠️ Estreñimiento</div>
+        <div class="chip" data-v="appetite">🍽️ Hambre constante</div>
+        <div class="chip" data-v="memory">🧠 Olvidos / niebla mental</div>
+        <div class="chip" data-v="snoring">😤 Ronquidos / apnea</div>
+        <div class="chip" data-v="swollen">🦵 Piernas hinchadas</div>
+        <div class="chip" data-v="none">✅ Sin síntomas</div>
+      </div>
+    </div>
+    <div class="val-err" id="v3">⚠ <span id="v3t"></span></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="go(2)">← Atrás</button>
+      <button class="btn btn-primary btn-full" onclick="next3()">🔬 Analizar mi salud</button>
+    </div>
+  </div>
+  <p class="disclaimer">KelDoc ofrece información educativa generada por IA, no reemplaza diagnóstico médico profesional.</p>
+</div>
+
+<!-- PANEL 4 -->
+<div class="panel" id="p4">
+  <div class="loading-ui" id="loadUI">
+    <div class="spinner"></div>
+    <h3>Analizando tu perfil de salud</h3>
+    <p>Evaluando hábitos · Detectando riesgos · Mapeando órganos<span class="ldots"><span>.</span><span>.</span><span>.</span></span></p>
+  </div>
+  <div class="err-box" id="errUI" style="display:none;">
+    <h3>No se pudo completar el análisis</h3>
+    <p>Hubo un problema al conectar. Verifica tu conexión e intenta de nuevo.</p>
+    <button class="btn btn-ghost" onclick="go(3)">← Volver e intentar</button>
+  </div>
+  <div id="resUI" style="display:none;">
+    <div class="score-card" id="scoreCard"></div>
+    <div class="results-wrap">
+      <div>
+        <div class="map-card">
+          <div class="map-top">
+            <div class="map-title">MAPA CORPORAL</div>
+            <div class="map-pill" id="mapPill">Analizando</div>
+          </div>
+          <div class="svg-outer" id="svgOuter">
+            <div class="scan"></div>
+            <svg id="bsvg" viewBox="0 0 220 540" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="gB" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#1e2d45"/><stop offset="100%" stop-color="#0d1520"/></radialGradient>
+                <filter id="hglow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
+              <ellipse cx="110" cy="45" rx="30" ry="34" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <ellipse cx="81" cy="48" rx="5" ry="8" fill="#14202e" stroke="#253550" stroke-width="1"/>
+              <ellipse cx="139" cy="48" rx="5" ry="8" fill="#14202e" stroke="#253550" stroke-width="1"/>
+              <path d="M96 76 Q96 88 93 96 L127 96 Q124 88 124 76Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M60 100 Q48 93 40 108 Q35 120 38 132 Q46 126 54 114 Q63 103 78 98Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M160 100 Q172 93 180 108 Q185 120 182 132 Q174 126 166 114 Q157 103 142 98Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M93 98 Q80 104 66 108" fill="none" stroke="#253550" stroke-width="1" opacity=".5"/>
+              <path d="M127 98 Q140 104 154 108" fill="none" stroke="#253550" stroke-width="1" opacity=".5"/>
+              <path d="M64 96 Q49 104 46 136 Q44 170 48 200 Q52 226 63 235 L157 235 Q168 226 172 200 Q176 170 174 136 Q171 104 156 96 Q140 91 110 90 Q80 91 64 96Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M70 116 Q90 126 110 122 Q90 138 70 132Z" fill="#0e1820" opacity=".3"/>
+              <path d="M150 116 Q130 126 110 122 Q130 138 150 132Z" fill="#0e1820" opacity=".3"/>
+              <line x1="110" y1="124" x2="110" y2="228" stroke="#253550" stroke-width=".8" stroke-dasharray="2,6" opacity=".35"/>
+              <path d="M78 150 Q110 158 142 150" fill="none" stroke="#253550" stroke-width=".7" opacity=".3"/>
+              <path d="M76 172 Q110 180 144 172" fill="none" stroke="#253550" stroke-width=".7" opacity=".3"/>
+              <path d="M76 194 Q110 202 144 194" fill="none" stroke="#253550" stroke-width=".7" opacity=".3"/>
+              <path d="M42 108 Q29 132 26 168 Q24 190 28 212 Q33 224 42 232 L53 227 Q46 214 44 194 Q41 170 45 144 Q48 126 58 111Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M40 230 Q33 244 32 265 Q31 282 35 294 L50 292 Q47 278 47 260 Q47 244 52 232Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <ellipse cx="42" cy="300" rx="10" ry="14" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M178 108 Q191 132 194 168 Q196 190 192 212 Q187 224 178 232 L167 227 Q174 214 176 194 Q179 170 175 144 Q172 126 162 111Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M180 230 Q187 244 188 265 Q189 282 185 294 L170 292 Q173 278 173 260 Q173 244 168 232Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <ellipse cx="178" cy="300" rx="10" ry="14" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M54 232 Q43 244 41 262 Q39 280 48 292 Q57 302 72 308 L148 308 Q163 302 172 292 Q181 280 179 262 Q177 244 166 232Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M68 256 Q110 248 152 256" fill="none" stroke="#253550" stroke-width=".7" opacity=".35"/>
+              <path d="M56 300 Q46 322 45 354 Q44 382 48 404 L94 404 Q96 382 94 354 Q92 322 102 300Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M164 300 Q174 322 175 354 Q176 382 172 404 L126 404 Q124 382 126 354 Q128 322 118 300Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <line x1="110" y1="302" x2="110" y2="402" stroke="#0d1520" stroke-width="3"/>
+              <ellipse cx="71" cy="408" rx="20" ry="9" fill="#14202e" stroke="#253550" stroke-width="1"/>
+              <ellipse cx="149" cy="408" rx="20" ry="9" fill="#14202e" stroke="#253550" stroke-width="1"/>
+              <path d="M52 416 Q48 436 48 460 Q48 480 53 494 L90 494 Q92 480 92 460 Q92 436 90 416Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M168 416 Q172 436 172 460 Q172 480 167 494 L130 494 Q128 480 128 460 Q128 436 130 416Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M50 492 Q43 498 41 505 Q43 513 55 515 L90 512 Q95 507 92 500 Q91 492 90 492Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <path d="M170 492 Q177 498 179 505 Q177 513 165 515 L130 512 Q125 507 128 500 Q129 492 130 492Z" fill="url(#gB)" stroke="#253550" stroke-width="1.5"/>
+              <!-- FAT ZONES -->
+              <ellipse id="fz-belly" cx="110" cy="184" rx="52" ry="44" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-fl" cx="52" cy="194" rx="18" ry="34" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-fr" cx="168" cy="194" rx="18" ry="34" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-chest" cx="110" cy="128" rx="44" ry="27" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-al" cx="37" cy="168" rx="13" ry="42" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-ar" cx="183" cy="168" rx="13" ry="42" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-hips" cx="110" cy="274" rx="60" ry="28" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-tl" cx="70" cy="354" rx="28" ry="52" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-tr" cx="150" cy="354" rx="28" ry="52" fill="#ff4d6d" opacity="0"/>
+              <ellipse id="fz-face" cx="110" cy="45" rx="30" ry="34" fill="#ff4d6d" opacity="0"/>
+              <!-- ORGAN ZONES -->
+              <ellipse id="oz-heart" cx="92" cy="126" rx="18" ry="16" fill="#ff4d6d" opacity="0" filter="url(#hglow)"/>
+              <ellipse id="oz-lung-l" cx="78" cy="142" rx="16" ry="26" fill="#4cb8ff" opacity="0" filter="url(#hglow)"/>
+              <ellipse id="oz-lung-r" cx="142" cy="142" rx="16" ry="26" fill="#4cb8ff" opacity="0" filter="url(#hglow)"/>
+              <path id="oz-liver" d="M120 160 Q150 154 157 170 Q160 185 152 198 Q136 206 118 198 Q107 186 110 172Z" fill="#ffb347" opacity="0" filter="url(#hglow)"/>
+              <ellipse id="oz-stomach" cx="94" cy="172" rx="18" ry="14" fill="#7c6fff" opacity="0" filter="url(#hglow)"/>
+              <path id="oz-pancreas" d="M82 183 Q110 176 132 183 Q130 194 110 196 Q88 196Z" fill="#c080ff" opacity="0" filter="url(#hglow)"/>
+              <ellipse id="oz-kid-l" cx="80" cy="205" rx="11" ry="16" fill="#ff8c69" opacity="0" filter="url(#hglow)"/>
+              <ellipse id="oz-kid-r" cx="140" cy="205" rx="11" ry="16" fill="#ff8c69" opacity="0" filter="url(#hglow)"/>
+              <path id="oz-colon" d="M66 208 Q66 234 110 242 Q154 234 154 208 Q110 216 66 208Z" fill="#50c878" opacity="0" filter="url(#hglow)"/>
+              <ellipse id="oz-brain" cx="110" cy="38" rx="26" ry="22" fill="#ffb3c6" opacity="0" filter="url(#hglow)"/>
+              <path id="oz-arteries" d="M106 106 Q106 232 110 292" fill="none" stroke="#ff4560" stroke-width="9" stroke-linecap="round" opacity="0" filter="url(#glow)"/>
+            </svg>
+          </div>
+          <div class="map-leg">
+            <div class="ml"><div class="mld" style="background:#ff4d6d"></div>Grasa</div>
+            <div class="ml"><div class="mld" style="background:#ff4d6d;opacity:.6"></div>Corazón</div>
+            <div class="ml"><div class="mld" style="background:#ffb347"></div>Hígado</div>
+            <div class="ml"><div class="mld" style="background:#4cb8ff"></div>Pulmones</div>
+            <div class="ml"><div class="mld" style="background:#c080ff"></div>Páncreas</div>
+            <div class="ml"><div class="mld" style="background:#50c878"></div>Colon</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="sec-lbl">ÓRGANOS EN RIESGO</div>
+        <div class="organ-list" id="organList"></div>
+        <div class="tip-box" id="tipBox" style="display:none;"></div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:28px;">
+      <button class="btn btn-ghost" onclick="restart()">← Nuevo análisis</button>
+    </div>
+    <p class="disclaimer">KelDoc proporciona información educativa generada por IA. No reemplaza el diagnóstico médico profesional.</p>
+  </div>
+</div>
+
+</div><!-- /page -->
+<script>
+var S={sex:'male',age:'',clothing:'',zones:[],exercise:'none',foods:[],proc:'daily',drinks:[],smoke:'never',symptoms:[]};
+var cur=0;
+
+function go(n){
+  document.getElementById('p'+cur).classList.remove('active');
+  var psCur=document.getElementById('ps'+cur);
+  psCur.classList.remove('active');
+  if(n>cur)psCur.classList.add('done');
+  cur=n;
+  document.getElementById('p'+n).classList.add('active');
+  var psN=document.getElementById('ps'+n);
+  psN.classList.remove('done');
+  psN.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showErr(vid,msg){
+  var el=document.getElementById(vid);
+  var t=document.getElementById(vid+'t');
+  if(t)t.textContent=msg; else el.textContent='⚠ '+msg;
+  el.classList.add('show');
+  setTimeout(function(){el.scrollIntoView({behavior:'smooth',block:'nearest'});},50);
+}
+function hideErr(vid){
+  var el=document.getElementById(vid);
+  el.classList.remove('show');
+}
+
+/* VALIDATIONS */
+function next0(){
+  hideErr('v0');
+  if(!S.age){document.getElementById('s-age').classList.add('invalid');showErr('v0','Selecciona tu rango de edad.');return;}
+  document.getElementById('s-age').classList.remove('invalid');
+  if(!S.clothing){document.getElementById('s-clothing').classList.add('invalid');showErr('v0','Selecciona tu talla de ropa.');return;}
+  document.getElementById('s-clothing').classList.remove('invalid');
+  if(S.zones.length===0){showErr('v0','Indica al menos una zona donde notes grasa (o "Ninguna").');return;}
+  go(1);
+}
+function next1(){
+  hideErr('v1');
+  if(S.foods.length===0){showErr('v1','Selecciona al menos un alimento que consumas frecuentemente.');return;}
+  go(2);
+}
+function next2(){
+  hideErr('v2');
+  if(S.drinks.length===0){showErr('v2','Selecciona al menos una bebida que consumas habitualmente.');return;}
+  go(3);
+}
+function next3(){
+  hideErr('v3');
+  if(S.symptoms.length===0){showErr('v3','Selecciona al menos un síntoma, o "Sin síntomas" si no tienes ninguno.');return;}
+  runAI();
+}
+
+/* PICKERS */
+function initSingle(id,key){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.querySelectorAll('.vo').forEach(function(o){
+    if(o.classList.contains('sel'))S[key]=o.dataset.v;
+    o.addEventListener('click',function(){
+      el.querySelectorAll('.vo').forEach(function(x){x.classList.remove('sel');});
+      o.classList.add('sel');S[key]=o.dataset.v;
+    });
+  });
+}
+function initMulti(id,key){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.querySelectorAll('.vo').forEach(function(o){
+    o.addEventListener('click',function(){
+      o.classList.toggle('sel');
+      var v=o.dataset.v;
+      if(o.classList.contains('sel')){if(S[key].indexOf(v)===-1)S[key].push(v);}
+      else{S[key]=S[key].filter(function(x){return x!==v;});}
+    });
+  });
+}
+function initChips(id,key){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.querySelectorAll('.chip').forEach(function(c){
+    c.addEventListener('click',function(){
+      c.classList.toggle('sel');
+      var v=c.dataset.v;
+      if(c.classList.contains('sel')){if(S[key].indexOf(v)===-1)S[key].push(v);}
+      else{S[key]=S[key].filter(function(x){return x!==v;});}
+    });
+  });
+}
+initSingle('vp-sex','sex');
+initMulti('vp-zones','zones');
+initSingle('vp-ex','exercise');
+initChips('ch-food','foods');
+initSingle('vp-proc','proc');
+initChips('ch-drink','drinks');
+initSingle('vp-smoke','smoke');
+initChips('ch-sym','symptoms');
+document.getElementById('s-age').addEventListener('change',function(){S.age=this.value;if(this.value)this.classList.remove('invalid');});
+document.getElementById('s-clothing').addEventListener('change',function(){S.clothing=this.value;if(this.value)this.classList.remove('invalid');});
+
+/* PROMPT */
+function buildPrompt(){
+  var FN={fastfood:'comida rápida',fried:'frituras',sweets:'dulces/pasteles',bread:'pan blanco/harinas',rice:'arroz/pasta en exceso',redmeat:'carne roja diaria',salt:'mucha sal/embutidos',dairy:'lácteos en exceso',chicken:'pollo',fish:'pescado',veggies:'verduras frecuentes',fruits:'frutas frescas',legumes:'legumbres',eggs:'huevos',nuts:'frutos secos'};
+  var DN={alcohol_daily:'alcohol diario',alcohol_weekly:'alcohol varios días/sem',alcohol_social:'alcohol ocasional',energy:'energizantes',soda_daily:'gaseosa diaria',soda_sometimes:'gaseosa a veces',coffee_excess:'+4 cafés/día',coffee_mod:'1-2 cafés/día',water_low:'poca agua',water_ok:'agua suficiente',tea:'té natural',juice_box:'jugos de caja',juice_natural:'jugos naturales'};
+  var SN={fatigue:'cansancio excesivo',heartburn:'acidez/reflujo',bloating:'hinchazón abdominal',headache:'dolores de cabeza',thirst:'sed constante',urination:'orinar mucho',joint_pain:'dolor articular',shortbreath:'falta de aire',chest_pain:'presión en pecho',vision:'vista borrosa',skin:'piel amarilla/seca',constipation:'estreñimiento',appetite:'hambre constante',memory:'niebla mental',snoring:'ronquidos/apnea',swollen:'piernas hinchadas'};
+  var CM={xs:'muy delgado/a',s:'delgado/a',m:'peso normal',l:'sobrepeso leve',xl:'sobrepeso notable',xxl:'obesidad'};
+  var EM={none:'sedentario',light:'caminatas 1-2×/sem',moderate:'ejercicio 3-4×/sem',active:'muy activo 5×+/sem'};
+  var PM={never:'casi nunca',sometimes:'a veces',often:'seguido',daily:'casi todos los días'};
+  return ['Sexo: '+(S.sex==='male'?'Hombre':'Mujer'),'Edad: '+S.age,'Complexión: '+(CM[S.clothing]||S.clothing),'Zonas con grasa visible: '+(S.zones.join(', ')||'ninguna'),'Actividad física: '+EM[S.exercise],'Alimentos frecuentes: '+S.foods.map(function(f){return FN[f]||f;}).join(', '),'Ultraprocesados: '+PM[S.proc],'Bebidas: '+S.drinks.map(function(d){return DN[d]||d;}).join(', '),'Tabaco: '+S.smoke,'Síntomas: '+S.symptoms.map(function(s){return SN[s]||s;}).join(', ')].join('\n');
+}
+
+/* AI CALL — llama al proxy de Vercel en /api/analyze */
+function runAI(){
+  go(4);
+  document.getElementById('loadUI').style.display='flex';
+  document.getElementById('errUI').style.display='none';
+  document.getElementById('resUI').style.display='none';
+  document.getElementById('svgOuter').classList.add('active');
+
+  var sys='Eres un médico especialista en medicina preventiva. Analiza el perfil y responde SOLO con JSON válido sin texto adicional ni backticks.\nEstructura: {"score":75,"scoreLabel":"Regular","summary":"2 frases.","organs":[{"id":"liver","name":"Hígado","emoji":"🫀","risk":"high","diseases":["Hígado graso"],"description":"2 frases.","fatZones":["belly"]}],"tip":"Rec 1. Rec 2. Rec 3."}\nIDs válidos: liver,heart,lungs,kidneys,pancreas,stomach,colon,brain,arteries. Risk: low,medium,high,critical. Solo medium/high/critical. Máx 6 órganos.';
+
+  var payload=JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:sys,messages:[{role:'user',content:buildPrompt()}]});
+
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','/api/analyze',true);
+  xhr.setRequestHeader('Content-Type','application/json');
+  xhr.timeout=30000;
+  xhr.onreadystatechange=function(){
+    if(xhr.readyState!==4)return;
+    try{
+      if(xhr.status!==200)throw new Error('HTTP '+xhr.status);
+      var data=JSON.parse(xhr.responseText);
+      var raw=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text||'';}).join('');
+      var match=raw.match(/\{[\s\S]*\}/);
+      if(!match)throw new Error('Sin JSON');
+      renderResult(JSON.parse(match[0]));
+    }catch(e){
+      console.error(e);
+      document.getElementById('loadUI').style.display='none';
+      document.getElementById('errUI').style.display='block';
+    }
+  };
+  xhr.ontimeout=function(){document.getElementById('loadUI').style.display='none';document.getElementById('errUI').style.display='block';};
+  xhr.onerror=function(){document.getElementById('loadUI').style.display='none';document.getElementById('errUI').style.display='block';};
+  xhr.send(payload);
+}
+
+/* RENDER */
+var rOp={low:0.4,medium:0.62,high:0.82,critical:0.95};
+function setOp(id,op){var el=document.getElementById(id);if(el)el.style.opacity=String(op);}
+function resetZones(){['fz-belly','fz-fl','fz-fr','fz-chest','fz-al','fz-ar','fz-hips','fz-tl','fz-tr','fz-face','oz-heart','oz-lung-l','oz-lung-r','oz-liver','oz-stomach','oz-pancreas','oz-kid-l','oz-kid-r','oz-colon','oz-brain','oz-arteries'].forEach(function(id){setOp(id,0);});}
+
+function renderResult(r){
+  document.getElementById('loadUI').style.display='none';
+  document.getElementById('resUI').style.display='block';
+  var sc=Math.max(0,Math.min(100,Number(r.score)||50));
+  var col=sc>=80?'#00e5a0':sc>=60?'#ffa726':sc>=40?'#ff4d6d':'#ff1744';
+  var C=2*Math.PI*36,arc=(sc/100)*C;
+  document.getElementById('scoreCard').innerHTML='<div class="ring-wrap"><svg viewBox="0 0 86 86"><circle cx="43" cy="43" r="36" fill="none" stroke="#1a2235" stroke-width="7"/><circle cx="43" cy="43" r="36" fill="none" stroke="'+col+'" stroke-width="7" stroke-dasharray="'+arc+' '+C+'" stroke-linecap="round" transform="rotate(-90 43 43)"/></svg><div class="ring-inner"><div class="ring-val" style="color:'+col+'">'+sc+'</div><div class="ring-sub">/ 100</div></div></div><div class="score-text"><h2 style="color:'+col+'">'+(r.scoreLabel||'Análisis')+'</h2><p>'+(r.summary||'')+'</p></div>';
+  document.getElementById('mapPill').textContent=sc>=70?'Saludable':sc>=50?'Moderado':'Atención requerida';
+  resetZones();
+  var FZ={belly:['fz-belly','fz-fl','fz-fr'],flanks:['fz-fl','fz-fr'],chest:['fz-chest'],arms:['fz-al','fz-ar'],hips:['fz-hips'],thighs:['fz-tl','fz-tr'],face:['fz-face']};
+  var OZ={liver:['oz-liver'],heart:['oz-heart'],lungs:['oz-lung-l','oz-lung-r'],kidneys:['oz-kid-l','oz-kid-r'],pancreas:['oz-pancreas'],stomach:['oz-stomach'],colon:['oz-colon'],brain:['oz-brain'],arteries:['oz-arteries']};
+  var cOp={xxl:0.82,xl:0.65,l:0.45,m:0.28,s:0.12,xs:0.06};
+  var fOp=cOp[S.clothing]||0.5;
+  S.zones.forEach(function(z){if(z==='none')return;(FZ[z]||[]).forEach(function(id){setOp(id,fOp);});});
+  (r.organs||[]).forEach(function(org){
+    var op=rOp[org.risk]||0.6;
+    (OZ[org.id]||[]).forEach(function(id){setOp(id,op);});
+    (org.fatZones||[]).forEach(function(z){(FZ[z]||[]).forEach(function(id){var el=document.getElementById(id);if(el&&parseFloat(el.style.opacity||0)<0.25)setOp(id,0.28);});});
+  });
+  var RL={low:['BAJO','rb-low'],medium:['MODERADO','rb-mid'],high:['ALTO','rb-high'],critical:['CRÍTICO','rb-crit']};
+  var list=document.getElementById('organList');
+  list.innerHTML='';
+  var orgs=r.organs||[];
+  if(orgs.length===0){list.innerHTML='<div class="tip-box"><strong>✅ Sin riesgos importantes detectados</strong>Tus hábitos muestran un perfil positivo. Mantén revisiones médicas regulares.</div>';}
+  else{orgs.forEach(function(org,i){var b=RL[org.risk]||RL['medium'];var d=(org.diseases||[]).map(function(x){return'<span class="dtag">'+x+'</span>';}).join('');var card=document.createElement('div');card.className='ocard';card.innerHTML='<div class="othumb">'+(org.emoji||'🫀')+'</div><div class="obody"><div class="ohead"><div class="oname">'+(org.name||'Órgano')+'</div><span class="rbadge '+b[1]+'">'+b[0]+'</span></div><div class="odesc">'+(org.description||'')+'</div><div class="dtags">'+d+'</div></div>';list.appendChild(card);setTimeout(function(){card.classList.add('in');},80+i*80);});}
+  var tb=document.getElementById('tipBox');
+  if(r.tip){tb.style.display='block';tb.innerHTML='<strong>💡 Recomendaciones de KelDoc</strong>'+r.tip;}
+}
+
+function restart(){
+  S={sex:'male',age:'',clothing:'',zones:[],exercise:'none',foods:[],proc:'daily',drinks:[],smoke:'never',symptoms:[]};
+  document.querySelectorAll('.vo.sel,.chip.sel').forEach(function(e){e.classList.remove('sel');});
+  ['#vp-sex [data-v="male"]','#vp-ex [data-v="none"]','#vp-proc [data-v="daily"]','#vp-smoke [data-v="never"]'].forEach(function(sel){var el=document.querySelector(sel);if(el)el.classList.add('sel');});
+  document.getElementById('s-age').value='';
+  document.getElementById('s-clothing').value='';
+  ['v0','v1','v2','v3'].forEach(hideErr);
+  document.querySelectorAll('.invalid').forEach(function(e){e.classList.remove('invalid');});
+  document.querySelectorAll('.ps').forEach(function(p){p.classList.remove('done','active');});
+  document.getElementById('ps0').classList.add('active');
+  cur=0;
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('p0').classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
