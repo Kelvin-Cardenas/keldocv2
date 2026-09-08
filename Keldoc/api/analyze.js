@@ -169,18 +169,44 @@ INSTRUCCIONES IMPORTANTES:
 
           const data = JSON.parse(responseText);
 
-          const text =
-            data?.candidates?.[0]
-              ?.content?.parts?.[0]
-              ?.text;
+     let text =
+  data?.candidates?.[0]
+    ?.content?.parts?.[0]
+    ?.text;
 
-          if (!text) {
+if (!text) {
+  lastError =
+    `Gemini ${model} returned an empty response`;
 
-            lastError =
-              `Gemini ${model} returned an empty response`;
+  continue;
+}
 
-            continue;
-          }
+// Limpiar posibles bloques Markdown
+text = text
+  .replace(/```json/gi, '')
+  .replace(/```/g, '')
+  .trim();
+
+// Verificar que realmente sea JSON
+try {
+  const parsed = JSON.parse(text);
+
+  // Volvemos a serializar para garantizar
+  // JSON limpio y válido
+  text = JSON.stringify(parsed);
+
+} catch (jsonError) {
+
+  console.error(
+    `Gemini returned invalid JSON from ${model}:`,
+    text
+  );
+
+  lastError =
+    `Invalid JSON returned by ${model}`;
+
+  continue;
+}
 
           console.log(
             `Gemini success using model: ${model}`
