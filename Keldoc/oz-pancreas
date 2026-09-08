@@ -437,8 +437,8 @@ select option{background:#111828;}
               <ellipse id="oz-lung-r" cx="142" cy="142" rx="16" ry="26" fill="#4cb8ff" opacity="0" filter="url(#hglow)"/>
               <path id="oz-liver" d="M120 160 Q150 154 157 170 Q160 185 152 198 Q136 206 118 198 Q107 186 110 172Z" fill="#ffb347" opacity="0" filter="url(#hglow)"/>
               <ellipse id="oz-stomach" cx="94" cy="172" rx="18" ry="14" fill="#7c6fff" opacity="0" filter="url(#hglow)"/>
-              <path id="oz-pancreas" d="M82 183 Q110 176 132 183 Q130 194 110 196 Q88 196Z" fill="#c080ff" opacity="0" filter="url(#hglow)"/>
-              <ellipse id="oz-kid-l" cx="80" cy="205" rx="11" ry="16" fill="#ff8c69" opacity="0" filter="url(#hglow)"/>
+              <path id="oz-pancreas" d="M82 183 Q110 176 132 183 Q130 194 110 196 Q88 196 82 183Z" fill="#c080ff" opacity="0" filter="url(#hglow)"
+/>              <ellipse id="oz-kid-l" cx="80" cy="205" rx="11" ry="16" fill="#ff8c69" opacity="0" filter="url(#hglow)"/>
               <ellipse id="oz-kid-r" cx="140" cy="205" rx="11" ry="16" fill="#ff8c69" opacity="0" filter="url(#hglow)"/>
               <path id="oz-colon" d="M66 208 Q66 234 110 242 Q154 234 154 208 Q110 216 66 208Z" fill="#50c878" opacity="0" filter="url(#hglow)"/>
               <ellipse id="oz-brain" cx="110" cy="38" rx="26" ry="22" fill="#ffb3c6" opacity="0" filter="url(#hglow)"/>
