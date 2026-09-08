@@ -4,19 +4,24 @@ export const config = {
 
 export default async function handler(req) {
 
-  // CORS preflight
+  // ==============================
+  // CORS
+  // ==============================
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+
+  // Preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
+      headers: corsHeaders
     });
   }
 
-  // Only POST
+  // Solo POST
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({
@@ -25,8 +30,28 @@ export default async function handler(req) {
       {
         status: 405,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
+
+  // ==============================
+  // Verificar API KEY
+  // ==============================
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return new Response(
+      JSON.stringify({
+        error: 'GEMINI_API_KEY is not configured in Vercel'
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         }
       }
     );
@@ -34,154 +59,242 @@ export default async function handler(req) {
 
   try {
 
+    // ==============================
+    // Leer request
+    // ==============================
     const body = await req.json();
 
-    const {
-      system,
-      messages
-    } = body;
+    const system = body?.system || '';
 
-    if (!system || !messages) {
-      return new Response(
-        JSON.stringify({
-          error: 'Missing system or messages'
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      );
-    }
+    const messages = Array.isArray(body?.messages)
+      ? body.messages
+      : [];
 
     const userMessage =
       messages?.[0]?.content || '';
 
+    if (!userMessage) {
+      return new Response(
+        JSON.stringify({
+          error: 'Missing user message'
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
+    // ==============================
+    // Construir prompt
+    // ==============================
     const prompt = `
 ${system}
 
-Analiza la siguiente información:
-
 ${userMessage}
 
-IMPORTANTE:
-- Responde únicamente JSON válido.
-- No utilices markdown.
-- No utilices bloques de código.
-- No agregues texto antes ni después del JSON.
+INSTRUCCIONES IMPORTANTES:
+
+1. Responde únicamente con JSON válido.
+2. No utilices Markdown.
+3. No utilices bloques de código.
+4. No agregues texto antes ni después del JSON.
+5. Respeta exactamente la estructura JSON solicitada por el usuario.
+6. No inventes información que no esté disponible.
 `;
 
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
-      {
-        method: 'POST',
+    // ==============================
+    // Modelos de respaldo
+    // ==============================
+    const models = [
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-3.5-flash-lite'
+    ];
 
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.GEMINI_API_KEY
-        },
+    let lastError = null;
 
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
+    // ==============================
+    // Intentar modelos
+    // ==============================
+    for (const model of models) {
+
+      try {
+
+        console.log(`Trying Gemini model: ${model}`);
+
+        const url =
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+
+          body: JSON.stringify({
+
+            contents: [
+              {
+                role: 'user',
+
+                parts: [
+                  {
+                    text: prompt
+                  }
+                ]
+              }
+            ],
+
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 1200,
+              responseMimeType: 'application/json'
             }
-          ],
 
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 1200,
-            responseMimeType: 'application/json'
+          })
+        });
+
+        const responseText = await response.text();
+
+        // ==============================
+        // Gemini respondió correctamente
+        // ==============================
+        if (response.ok) {
+
+          const data = JSON.parse(responseText);
+
+          const text =
+            data?.candidates?.[0]
+              ?.content?.parts?.[0]
+              ?.text;
+
+          if (!text) {
+
+            lastError =
+              `Gemini ${model} returned an empty response`;
+
+            continue;
           }
-        })
+
+          console.log(
+            `Gemini success using model: ${model}`
+          );
+
+          // ==============================
+          // IMPORTANTE:
+          // mantenemos formato Anthropic
+          // para que tu frontend actual
+          // no tenga que cambiar.
+          // ==============================
+          const result = {
+            content: [
+              {
+                type: 'text',
+                text: text
+              }
+            ]
+          };
+
+          return new Response(
+            JSON.stringify(result),
+            {
+              status: 200,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        }
+
+        // ==============================
+        // Gemini dio error
+        // ==============================
+        console.error(
+          `Gemini ${model} failed:`,
+          response.status,
+          responseText
+        );
+
+        lastError =
+          `Gemini ${model} HTTP ${response.status}: ${responseText}`;
+
+        // ==============================
+        // Si es 503 o 429,
+        // probamos otro modelo
+        // ==============================
+        if (
+          response.status === 503 ||
+          response.status === 429
+        ) {
+          continue;
+        }
+
+        // ==============================
+        // Si es 404, también probamos
+        // otro modelo.
+        // ==============================
+        if (response.status === 404) {
+          continue;
+        }
+
+        // Otros errores
+        break;
+
+      } catch (error) {
+
+        console.error(
+          `Error using Gemini ${model}:`,
+          error
+        );
+
+        lastError =
+          error?.message || String(error);
+
+        continue;
       }
-    );
-
-    const responseText = await response.text();
-
-    if (!response.ok) {
-
-      return new Response(
-        JSON.stringify({
-          error: 'Gemini API error',
-          details: responseText
-        }),
-        {
-          status: response.status,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      );
     }
 
-    const geminiData = JSON.parse(responseText);
-
-    const text =
-      geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    if (!text) {
-
-      return new Response(
-        JSON.stringify({
-          error: 'Gemini returned an empty response'
-        }),
-        {
-          status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      );
-    }
-
-    /*
-     * Adaptamos la respuesta de Gemini
-     * al formato que actualmente espera tu frontend.
-     */
-
-    const result = {
-      content: [
-        {
-          type: 'text',
-          text: text
-        }
-      ]
-    };
-
+    // ==============================
+    // Todos los modelos fallaron
+    // ==============================
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({
+        error: 'All Gemini models failed',
+        details: lastError
+      }),
       {
-        status: 200,
+        status: 503,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         }
       }
     );
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error(err);
+    console.error(
+      'API analyze error:',
+      error
+    );
 
     return new Response(
       JSON.stringify({
-        error: String(err.message || err)
+        error: 'Internal server error',
+        details: error?.message || String(error)
       }),
       {
         status: 500,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json'
         }
       }
     );
