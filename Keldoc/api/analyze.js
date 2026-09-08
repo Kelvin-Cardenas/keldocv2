@@ -4,16 +4,12 @@ export const config = {
 
 export default async function handler(req) {
 
-  // ==============================
-  // CORS
-  // ==============================
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type'
   };
 
-  // Preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -21,7 +17,6 @@ export default async function handler(req) {
     });
   }
 
-  // Solo POST
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({
@@ -37,15 +32,12 @@ export default async function handler(req) {
     );
   }
 
-  // ==============================
-  // Verificar API KEY
-  // ==============================
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     return new Response(
       JSON.stringify({
-        error: 'GEMINI_API_KEY is not configured in Vercel'
+        error: 'GEMINI_API_KEY is not configured'
       }),
       {
         status: 500,
@@ -59,9 +51,6 @@ export default async function handler(req) {
 
   try {
 
-    // ==============================
-    // Leer request
-    // ==============================
     const body = await req.json();
 
     const system = body?.system || '';
@@ -88,215 +77,162 @@ export default async function handler(req) {
       );
     }
 
-    // ==============================
-    // Construir prompt
-    // ==============================
     const prompt = `
 ${system}
 
 ${userMessage}
 
-INSTRUCCIONES IMPORTANTES:
+IMPORTANTE:
 
-1. Responde únicamente con JSON válido.
-2. No utilices Markdown.
-3. No utilices bloques de código.
-4. No agregues texto antes ni después del JSON.
-5. Respeta exactamente la estructura JSON solicitada por el usuario.
-6. No inventes información que no esté disponible.
+- Responde únicamente con JSON válido.
+- No uses Markdown.
+- No uses bloques de código.
+- No agregues explicaciones antes ni después del JSON.
+- Respeta exactamente la estructura JSON solicitada.
 `;
 
-    // ==============================
-    // Modelos de respaldo
-    // ==============================
-    const models = [
-      'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.5-flash-lite'
-    ];
+    console.log('Calling Gemini...');
 
-    let lastError = null;
+    const controller = new AbortController();
 
-    // ==============================
-    // Intentar modelos
-    // ==============================
-    for (const model of models) {
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 25000);
 
-      try {
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+      {
+        method: 'POST',
 
-        console.log(`Trying Gemini model: ${model}`);
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
 
-        const url =
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-
-          body: JSON.stringify({
-
-            contents: [
-              {
-                role: 'user',
-
-                parts: [
-                  {
-                    text: prompt
-                  }
-                ]
-              }
-            ],
-
-            generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 1200,
-              responseMimeType: 'application/json'
-            }
-
-          })
-        });
-
-        const responseText = await response.text();
-
-        // ==============================
-        // Gemini respondió correctamente
-        // ==============================
-        if (response.ok) {
-
-          const data = JSON.parse(responseText);
-
-     let text =
-  data?.candidates?.[0]
-    ?.content?.parts?.[0]
-    ?.text;
-
-if (!text) {
-  lastError =
-    `Gemini ${model} returned an empty response`;
-
-  continue;
-}
-
-// Limpiar posibles bloques Markdown
-text = text
-  .replace(/```json/gi, '')
-  .replace(/```/g, '')
-  .trim();
-
-// Verificar que realmente sea JSON
-try {
-  const parsed = JSON.parse(text);
-
-  // Volvemos a serializar para garantizar
-  // JSON limpio y válido
-  text = JSON.stringify(parsed);
-
-} catch (jsonError) {
-
-  console.error(
-    `Gemini returned invalid JSON from ${model}:`,
-    text
-  );
-
-  lastError =
-    `Invalid JSON returned by ${model}`;
-
-  continue;
-}
-
-          console.log(
-            `Gemini success using model: ${model}`
-          );
-
-          // ==============================
-          // IMPORTANTE:
-          // mantenemos formato Anthropic
-          // para que tu frontend actual
-          // no tenga que cambiar.
-          // ==============================
-          const result = {
-            content: [
-              {
-                type: 'text',
-                text: text
-              }
-            ]
-          };
-
-          return new Response(
-            JSON.stringify(result),
+        body: JSON.stringify({
+          contents: [
             {
-              status: 200,
-              headers: {
-                ...corsHeaders,
-                'Content-Type': 'application/json'
-              }
+              role: 'user',
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
             }
-          );
-        }
+          ],
 
-        // ==============================
-        // Gemini dio error
-        // ==============================
-        console.error(
-          `Gemini ${model} failed:`,
-          response.status,
-          responseText
-        );
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 1200,
+            responseMimeType: 'application/json'
+          }
+        }),
 
-        lastError =
-          `Gemini ${model} HTTP ${response.status}: ${responseText}`;
-
-        // ==============================
-        // Si es 503 o 429,
-        // probamos otro modelo
-        // ==============================
-        if (
-          response.status === 503 ||
-          response.status === 429
-        ) {
-          continue;
-        }
-
-        // ==============================
-        // Si es 404, también probamos
-        // otro modelo.
-        // ==============================
-        if (response.status === 404) {
-          continue;
-        }
-
-        // Otros errores
-        break;
-
-      } catch (error) {
-
-        console.error(
-          `Error using Gemini ${model}:`,
-          error
-        );
-
-        lastError =
-          error?.message || String(error);
-
-        continue;
+        signal: controller.signal
       }
+    );
+
+    clearTimeout(timeout);
+
+    const responseText = await response.text();
+
+    console.log(
+      'Gemini HTTP status:',
+      response.status
+    );
+
+    if (!response.ok) {
+
+      return new Response(
+        JSON.stringify({
+          error: 'Gemini API error',
+          details: responseText
+        }),
+        {
+          status: response.status,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
     }
 
-    // ==============================
-    // Todos los modelos fallaron
-    // ==============================
+    const data = JSON.parse(responseText);
+
+    let text =
+      data?.candidates?.[0]
+        ?.content?.parts?.[0]
+        ?.text;
+
+    if (!text) {
+
+      return new Response(
+        JSON.stringify({
+          error: 'Gemini returned empty response'
+        }),
+        {
+          status: 502,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
+    console.log('Gemini response received');
+
+    // Eliminar Markdown si Gemini lo agrega
+    text = text
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
+
+    // Validar JSON
+    let parsed;
+
+    try {
+
+      parsed = JSON.parse(text);
+
+    } catch (error) {
+
+      console.error(
+        'Invalid JSON from Gemini:',
+        text
+      );
+
+      return new Response(
+        JSON.stringify({
+          error: 'Gemini returned invalid JSON',
+          raw: text
+        }),
+        {
+          status: 502,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
+    // Mantener formato compatible
+    // con tu frontend actual
+    const result = {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(parsed)
+        }
+      ]
+    };
+
     return new Response(
-      JSON.stringify({
-        error: 'All Gemini models failed',
-        details: lastError
-      }),
+      JSON.stringify(result),
       {
-        status: 503,
+        status: 200,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json'
@@ -307,9 +243,25 @@ try {
   } catch (error) {
 
     console.error(
-      'API analyze error:',
+      'Analyze error:',
       error
     );
+
+    if (error?.name === 'AbortError') {
+
+      return new Response(
+        JSON.stringify({
+          error: 'Gemini request timeout'
+        }),
+        {
+          status: 504,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({
