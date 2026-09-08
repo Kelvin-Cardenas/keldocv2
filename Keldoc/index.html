@@ -592,8 +592,17 @@ function runAI(){
 
   var sys='Eres un médico especialista en medicina preventiva. Analiza el perfil y responde SOLO con JSON válido sin texto adicional ni backticks.\nEstructura: {"score":75,"scoreLabel":"Regular","summary":"2 frases.","organs":[{"id":"liver","name":"Hígado","emoji":"🫀","risk":"high","diseases":["Hígado graso"],"description":"2 frases.","fatZones":["belly"]}],"tip":"Rec 1. Rec 2. Rec 3."}\nIDs válidos: liver,heart,lungs,kidneys,pancreas,stomach,colon,brain,arteries. Risk: low,medium,high,critical. Solo medium/high/critical. Máx 6 órganos.';
 
-  var payload=JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:sys,messages:[{role:'user',content:buildPrompt()}]});
-
+var payload=JSON.stringify({
+    model:'gemini-2.5-flash',
+    max_tokens:1200,
+    system:sys,
+    messages:[
+        {
+            role:'user',
+            content:buildPrompt()
+        }
+    ]
+});
   var xhr=new XMLHttpRequest();
   xhr.open('POST','/api/analyze',true);
   xhr.setRequestHeader('Content-Type','application/json');
